@@ -3,7 +3,15 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Camera, Loader2, X, Info, ScanLine, Check } from "lucide-react";
+import {
+  Camera,
+  Loader2,
+  X,
+  Info,
+  ScanLine,
+  Check,
+  Sparkles,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Input, Textarea, Field } from "@/components/ui";
 import { QrScanner } from "@/components/QrScanner";
@@ -38,6 +46,11 @@ export function CaptureForm({
   const [error, setError] = useState<string | null>(null);
   const [qrDetected, setQrDetected] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extractMsg, setExtractMsg] = useState<{
+    kind: "ok" | "err";
+    text: string;
+  } | null>(null);
 
   const openDate = useMemo(() => {
     const p = parseDate(purchaseDate);
@@ -69,6 +82,77 @@ export function CaptureForm({
       return null;
     });
     if (fileInput.current) fileInput.current.value = "";
+  }
+
+  async function scanDetails() {
+    if (!file) return;
+    setExtracting(true);
+    setExtractMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch("/api/extract", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Scan failed.");
+      const d = json.data ?? {};
+      const isISO = (v: unknown): v is string =>
+        typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+      let filled = 0;
+      if (d.merchant_name) {
+        setMerchant(d.merchant_name);
+        filled++;
+      }
+      if (d.amount != null) {
+        setAmount(String(d.amount));
+        filled++;
+      }
+      if (isISO(d.purchase_date)) {
+        setPurchaseDate(d.purchase_date);
+        filled++;
+      }
+      if (d.wait_days != null) {
+        setWaitDays(String(d.wait_days));
+        filled++;
+      }
+      // Deadline: explicit date if present, else compute from "within N days".
+      if (isISO(d.register_deadline)) {
+        setDeadline(d.register_deadline);
+        filled++;
+      } else if (d.deadline_days != null) {
+        const base = parseDate(
+          isISO(d.purchase_date) ? d.purchase_date : purchaseDate,
+        );
+        if (base) {
+          setDeadline(toISODate(addDays(base, Number(d.deadline_days))));
+          filled++;
+        }
+      }
+      if (d.qr_url && looksLikeUrl(d.qr_url)) {
+        setQrUrl(d.qr_url);
+        setQrDetected(true);
+        filled++;
+      }
+
+      setExtractMsg(
+        filled
+          ? {
+              kind: "ok",
+              text: `Filled ${filled} field${filled > 1 ? "s" : ""} — please review before saving.`,
+            }
+          : {
+              kind: "err",
+              text: "Couldn't read the details clearly. Enter them manually.",
+            },
+      );
+    } catch (e) {
+      setExtractMsg({
+        kind: "err",
+        text: e instanceof Error ? e.message : "Scan failed.",
+      });
+    } finally {
+      setExtracting(false);
+    }
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -153,6 +237,35 @@ export function CaptureForm({
           <span className="text-sm font-semibold">Take a photo of the receipt</span>
           <span className="text-xs">or choose from your library</span>
         </button>
+      )}
+
+      {preview && (
+        <div className="space-y-1.5">
+          <Button
+            type="button"
+            variant="secondary"
+            block
+            onClick={scanDetails}
+            disabled={extracting}
+          >
+            {extracting ? (
+              <Loader2 size={16} className="animate-spin" aria-hidden />
+            ) : (
+              <Sparkles size={16} aria-hidden />
+            )}
+            {extracting ? "Reading receipt…" : "Scan details from photo"}
+          </Button>
+          {extractMsg && (
+            <p
+              role="status"
+              className={`text-xs font-medium ${
+                extractMsg.kind === "ok" ? "text-success" : "text-danger"
+              }`}
+            >
+              {extractMsg.text}
+            </p>
+          )}
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-3">
