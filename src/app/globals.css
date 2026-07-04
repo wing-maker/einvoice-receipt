@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger-soft: var(--danger-soft);
+
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-plex-sans);
+
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}
+
+:root {
+  --background: #f5f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --foreground: #0f1b2d;
+  --muted: #eef1f5;
+  --muted-foreground: #5a6675;
+  --border: #e3e8ee;
+
+  --primary: #0d9488; /* teal — trustworthy, financial */
+  --primary-foreground: #ffffff;
+  --primary-soft: #d3f1ec;
+
+  --success: #15803d;
+  --success-foreground: #ffffff;
+  --success-soft: #d5f0dd;
+
+  --warning: #b45309;
+  --warning-foreground: #ffffff;
+  --warning-soft: #fbe8cf;
+
+  --danger: #dc2626;
+  --danger-foreground: #ffffff;
+  --danger-soft: #fadcdc;
+
+  --ring: #0d9488;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a1220;
+    --surface: #111c2e;
+    --surface-2: #18253a;
+    --foreground: #e8eef6;
+    --muted: #18253a;
+    --muted-foreground: #93a1b5;
+    --border: #263751;
+
+    --primary: #2dd4bf;
+    --primary-foreground: #04231f;
+    --primary-soft: #103733;
+
+    --success: #34d399;
+    --success-foreground: #052a17;
+    --success-soft: #0f3626;
+
+    --warning: #fbbf24;
+    --warning-foreground: #2a1a00;
+    --warning-soft: #3a2a08;
+
+    --danger: #f87171;
+    --danger-foreground: #2b0a0a;
+    --danger-soft: #3a1414;
+
+    --ring: #2dd4bf;
+  }
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-plex-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures for dates/amounts to avoid layout shift */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
