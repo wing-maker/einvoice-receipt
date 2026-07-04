@@ -3,11 +3,13 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Camera, Loader2, X, Info } from "lucide-react";
+import { Camera, Loader2, X, Info, ScanLine, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Input, Textarea, Field } from "@/components/ui";
+import { QrScanner } from "@/components/QrScanner";
 import type { BuyerProfile } from "@/lib/types";
 import { addDays, parseDate, toISODate, formatDate } from "@/lib/dates";
+import { decodeQrFromFile, looksLikeUrl } from "@/lib/qr";
 
 export function CaptureForm({
   teamId,
@@ -34,6 +36,8 @@ export function CaptureForm({
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [qrDetected, setQrDetected] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const openDate = useMemo(() => {
     const p = parseDate(purchaseDate);
@@ -42,7 +46,7 @@ export function CaptureForm({
     return null;
   }, [purchaseDate, waitDays]);
 
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
@@ -50,6 +54,12 @@ export function CaptureForm({
       if (old) URL.revokeObjectURL(old);
       return URL.createObjectURL(f);
     });
+    // Read the receipt's QR straight from the photo, if present.
+    const found = await decodeQrFromFile(f);
+    if (found && looksLikeUrl(found)) {
+      setQrUrl(found);
+      setQrDetected(true);
+    }
   }
 
   function clearPhoto() {
@@ -105,6 +115,7 @@ export function CaptureForm({
   }
 
   return (
+    <>
     <form onSubmit={onSubmit} className="px-4 pt-6 space-y-5">
       {/* Photo */}
       <input
@@ -221,20 +232,45 @@ export function CaptureForm({
         )}
       </div>
 
-      <Field
-        label="QR / registration link"
-        htmlFor="qr"
-        hint="Paste the link from the receipt QR so you can jump straight to it later."
-      >
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label
+            htmlFor="qr"
+            className="block text-sm font-medium text-foreground"
+          >
+            QR / registration link
+          </label>
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1.5 text-xs font-semibold text-primary hover:bg-border"
+          >
+            <ScanLine size={14} aria-hidden />
+            Scan QR
+          </button>
+        </div>
         <Input
           id="qr"
           type="url"
           inputMode="url"
           value={qrUrl}
-          onChange={(e) => setQrUrl(e.target.value)}
+          onChange={(e) => {
+            setQrUrl(e.target.value);
+            setQrDetected(false);
+          }}
           placeholder="https://…"
         />
-      </Field>
+        {qrDetected ? (
+          <p className="flex items-center gap-1.5 text-xs font-medium text-success">
+            <Check size={13} aria-hidden />
+            Detected from the receipt QR
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Auto-filled when we can read the QR from your photo — or tap Scan QR.
+          </p>
+        )}
+      </div>
 
       <Field label="Buyer profile" htmlFor="buyer">
         {profiles.length === 0 ? (
@@ -284,5 +320,17 @@ export function CaptureForm({
         Save receipt
       </Button>
     </form>
+
+    {scannerOpen && (
+      <QrScanner
+        onResult={(v) => {
+          setQrUrl(v);
+          setQrDetected(looksLikeUrl(v));
+          setScannerOpen(false);
+        }}
+        onClose={() => setScannerOpen(false)}
+      />
+    )}
+    </>
   );
 }
